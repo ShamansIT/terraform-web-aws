@@ -18,3 +18,9 @@ The solution implements the principles of Infrastructure as Code (IaC), a modula
 ## Lab Log 
 TODO
 
+## Prerequisites
+
+- Terraform >= 1.7
+- AWS account with appropriate IAM permissions
+- AWS CLI configured (`aws configure`)
+- Git + GitHub account
