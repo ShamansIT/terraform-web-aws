@@ -106,5 +106,14 @@ Even at the **skeleton level**, design solutions have advantages and disadvantag
 ## Lab Log 
 TODO
 
+<<<<<<< HEAD
 
 
+=======
+## Prerequisites
+
+- Terraform >= 1.7
+- AWS account with appropriate IAM permissions
+- AWS CLI configured (`aws configure`)
+- Git + GitHub account
+>>>>>>> 2ef1d09b11c5317fd55b580cda495684acac7238
