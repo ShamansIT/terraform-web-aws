@@ -23,10 +23,16 @@ Solution applies the principles of **Infrastructure as Code**, modular configura
 ## Research & Design (Stage 1)
 Initial research focused on understanding common IaC and networking patterns from official Terraform Kubernetes tutorials (Research | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); [AKS](https://developer.hashicorp.com/terraform/tutorials/kubernetes/aks); [GKE](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke)) and resilient multi-cluster architectures (Research | [AWS EKS multi-cluster blog](https://aws.amazon.com/blogs/networking-and-content-delivery/building-resilient-multi-cluster-applications-with-amazon-eks/)).  
 Based on this, the project scope was defined as a simplified HA web stack on EC2 across two Availability Zones, with an ALB in front.
+<details> <summary>AWS Configure</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_01_aws_configure.jpg?raw=true" width="900" alt="aws_configure"> </details>
+
 
 ## GitHub Repo & Workflow (Stage 2)
 Public GitHub repository `terraform-web-aws` created with `main` as the stable branch and dedicated `feature/*` branches for each phase (project init, networking, security+EC2, ALB, modules+CI).  
 A Git-based workflow with structured Pull Requests (Summary, Changes, Rationale, Testing) was adopted to mirror real-world Terraform/Kubernetes projects and to make the evolution of the infrastructure transparent (Process | [AWS EKS Medium article](https://medium.com/@david.e.munoz/aws-elastic-kubernetes-service-eks-e5f4c00b3781); [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).
+
+<details> <summary>Init Terraform</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_02_init_terraform.jpg?raw=true" width="900" alt="init_terraform"> </details>
+
+<details> <summary>Validate Terraform</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_03_validate_terraform.jpg?raw=true" width="900" alt="validate_terraform"> </details>
 
 ## Terraform project skeleton (Stage 3)
 In the initial stage - Terraform skeleton, the focus is on building a **clean, extensible IaC structure** that can be safely developed in subsequent phases.
@@ -102,18 +108,9 @@ Even at the **skeleton level**, design solutions have advantages and disadvantag
 - ** Terraform and the risk of first-stage errors**  
   - Even starting stage construction requires an understanding of state, dependency graph, and lifecycle semantics (Risk | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); Risk | [Terraform Stacks blog](https://www.hashicorp.com/en/blog/terraform-stacks-explained)).  
 
-
-## Lab Log 
-TODO
-
-<<<<<<< HEAD
-
-
-=======
 ## Prerequisites
-
 - Terraform >= 1.7
 - AWS account with appropriate IAM permissions
 - AWS CLI configured (`aws configure`)
 - Git + GitHub account
->>>>>>> 2ef1d09b11c5317fd55b580cda495684acac7238
+
