@@ -62,13 +62,13 @@ Terraform skeleton includes:
 
 ### Structure Explanation
 
-1. **Compliance with real EKS projects**  
+**Compliance with real EKS projects**  
 David Muñoz's article shows that even complex infrastructures can be supported with a small set of core files (`main.tf`, `providers.tf`, `variables.tf`, `outputs.tf`) and individual tfvars (Best practice | [AWS EKS Medium article](https://medium.com/@david.e.munoz/aws-elastic-kubernetes-service-eks-e5f4c00b3781)).  
 
-2. **Scale potential**  
+**Scale potential**  
 The concept of Terraform Stacks clearly demonstrates the need for a clear boundary between root configurations and modular components as infrastructure grows (Best practice | [Terraform Stacks blog](https://www.hashicorp.com/en/blog/terraform-stacks-explained)). Skeleton is already consistent with this logic.  
 
-3. **Repeatability and portability**  
+**Repeatability and portability**  
 Conceptually preserved common Terraform-workflow patterns (init → format → validate → plan → apply), which coincides with the approach in multi-cloud Kubernetes projects (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); Best practice | [Terraform AKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/aks); Best practice | [Terraform GKE tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke)).  
 
 ### `terraform init`, `terraform fmt`, `terraform validate` are part of the routine
@@ -106,11 +106,26 @@ Even at the **skeleton level**, design solutions have advantages and disadvantag
   - AWS provider requires change monitoring (Risk | [AWS EKS Medium article](https://medium.com/@david.e.munoz/aws-elastic-kubernetes-service-eks-e5f4c00b3781)).  
 
 - ** Terraform and the risk of first-stage errors**  
-  - Even starting stage construction requires an understanding of state, dependency graph, and lifecycle semantics (Risk | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); Risk | [Terraform Stacks blog](https://www.hashicorp.com/en/blog/terraform-stacks-explained)).  
+  - Even starting stage construction requires an understanding of state, dependency graph, and lifecycle semantics (Risk | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); Risk | [Terraform Stacks blog](https://www.hashicorp.com/en/blog/terraform-stacks-explained)). 
 
-## Prerequisites
-- Terraform >= 1.7
-- AWS account with appropriate IAM permissions
-- AWS CLI configured (`aws configure`)
-- Git + GitHub account
+### Testing
+- `terraform fmt`
+- `terraform validate`
+- `terraform plan`
+
+## Adds core networking layer for Terraform-based web infrastructure on AWS (Stage 4)
+
+### Changes
+- Created a dedicated VPC with CIDR `10.0.0.0/16`, DNS support enabled and basic tagging.
+- Added two public subnets (`10.0.1.0/24`, `10.0.2.0/24`) and two private subnets (`10.0.10.0/24`, `10.0.20.0/24`) distributed across the first two Availability Zones in the region.
+- Provisioned an Internet Gateway and public route table with a default route `0.0.0.0/0` pointing to the IGW.
+- Associated the public subnets with the public route table.
+
+### Rationale
+The networking design follows typical AWS and Terraform best practices:
+- A dedicated VPC with a `/16` CIDR provides enough address space for future scaling.
+- Public and private subnets are spread across two Availability Zones to support high availability.
+- The route table uses a correct default route (`0.0.0.0/0`) instead of the weak `0.0.0.0/24` example from the brief, which would only route a tiny fraction of the IPv4 space.
+
+<details> <summary>Terraform plan</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_04_terraform_plan.jpg?raw=true" width="900" alt="terraform_plan"> </details>
 

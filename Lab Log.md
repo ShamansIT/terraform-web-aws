@@ -18,6 +18,14 @@
 - Ran `terraform init`, `terraform fmt` and `terraform validate` to verify configuration correctness and enforce a consistent code style, following HashiCorp’s recommendations for Terraform projects (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).  
 - Opened a Pull Request **"Initialize Terraform project structure"** as the first step in a fully scripted IaC pipeline, ensuring that all subsequent infrastructure changes will be tracked, discussed and reviewed via GitHub.
 
+### Phase 4 - Network Layer (VPC, Subnets, IGW, Routing)
+- Implemented the core networking layer: one VPC (`10.0.0.0/16`), two public subnets (`10.0.1.0/24`, `10.0.2.0/24`), two private subnets (`10.0.10.0/24`, `10.0.20.0/24`) across two Availability Zones.
+- Added Internet Gateway and public route table with correct default route `0.0.0.0/0`, explicitly improving on the weaker `0.0.0.0/24`.
+- Associated public subnets with the public route table to enable internet access for future web and ALB resources.
+- Validated the configuration using `terraform fmt`, `terraform validate`, `terraform plan` to ensure the networking layer is consistent and ready for the next phases.
+
+
+***
 ## Prerequisites
 - Terraform >= 1.7
 - AWS account with appropriate IAM permissions
