@@ -138,3 +138,76 @@ resource "aws_route_table_association" "public_b" {
   subnet_id      = aws_subnet.public_b.id
   route_table_id = aws_route_table.public.id
 }
+
+# ***************************************************
+# Security Groups
+# ***************************************************
+
+# Security Group for App Load Balancer
+resource "aws_security_group" "alb_sg" {
+  name        = "alb-sg"
+  description = "Allow HTTP from internet to ALB"
+  vpc_id      = aws_vpc.main.id
+
+  # Ingress: allow HTTP from anywhere
+  ingress {
+    description = "HTTP from anywhere"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Egress: allow all outbound traffic
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "alb-sg"
+    Component   = "load-balancer"
+    Environment = "lab"
+  }
+}
+
+# Security Group for web EC2 instances
+resource "aws_security_group" "web_sg" {
+  name        = "web-sg"
+  description = "Allow HTTP from ALB and optional SSH from a trusted IP"
+  vpc_id      = aws_vpc.main.id
+
+  # Ingress: allow HTTP from ALB security group only
+  ingress {
+    description     = "HTTP from ALB only"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  # Ingress: allow SSH from trusted IP only
+  ingress {
+    description = "SSH from trusted IP"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip_cidr]
+  }
+
+  # Egress: allow all outbound traffic
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "web-sg"
+    Component   = "web"
+    Environment = "lab"
+  }
+}
