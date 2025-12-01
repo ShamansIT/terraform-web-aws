@@ -24,6 +24,12 @@
 - Associated public subnets with the public route table to enable internet access for future web and ALB resources.
 - Validated the configuration using `terraform fmt`, `terraform validate`, `terraform plan` to ensure the networking layer is consistent and ready for the next phases.
 
+### Phase 5 - Security Layer, Security Groups
+- Defined two Security Groups: `alb_sg` for public Application Load Balancer and `web_sg` for internal web EC2 instances.
+- Allowed HTTP (80) from internet only to ALB, while restricting HTTP on EC2 to traffic coming from ALB Security Group.
+- Configured SSH (22) access to EC2 instances due configurable `my_ip_cidr` variable to illustrate how admin access can be limited to trusted sources.
+- Verified configuration with `terraform fmt`, `terraform validate` and `terraform plan` to ensure security layer is consistent and ready for attaching EC2 instances in next phase.
+
 
 ***
 ## Prerequisites

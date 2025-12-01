@@ -129,3 +129,49 @@ The networking design follows typical AWS and Terraform best practices:
 
 <details> <summary>Terraform plan</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_04_terraform_plan.jpg?raw=true" width="900" alt="terraform_plan"> </details>
 
+
+### Security Layer, Security Groups (Stage 5) 
+Stage introduces security layer for the network by defining two dedicated Security Groups:  
+**(1)** - one for public Application Load Balancer (ALB) and  
+**(2)** - one for internal EC2 web instances.  
+Designed by follows AWS and Terraform security best practices for tiered architectures where ALB acts as the only public entry point, while compute resources remain private.
+
+#### Implemented components
+- **ALB Security Group (`alb_sg`)**
+  - Ingress: HTTP (`80/tcp`) from `0.0.0.0/0`.
+  - Egress: unrestricted outbound traffic.
+  - Rationale: ALB is designed to be publicly accessible and to terminate incoming client connections. This mirrors the frontend-layer pattern from multi-AZ and multi-cluster architectures (Best practice | [AWS EKS multi-cluster blog](https://aws.amazon.com/blogs/networking-and-content-delivery/building-resilient-multi-cluster-applications-with-amazon-eks/)).
+
+- **EC2 Security Group (`web_sg`)**
+  - Ingress:  
+    - HTTP (`80/tcp`) **only from the ALB Security Group**.  
+    - SSH (`22/tcp`) only from trusted, configurable CIDR (`var.my_ip_cidr`).
+  - Egress: unrestricted outbound traffic for updates, AMI metadata and package installs.
+  - Rationale: EC2 instances should not be exposed directly to the internet.  
+    Traffic flow becomes:
+    **Client → ALB → EC2**, matching common AWS patterns for EKS/EC2 workloads (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).
+
+#### Reasoning structure choise
+- **Layered security** - ALB receives all public traffic, while web servers stay private. This minimizes the attack surface and follows the principle of least privilege.
+- **Controlled administrative access** - SSH access is limited to a configurable IP, demonstrating how admin access is locked down in production environments (e.g. VPN, bastion host, corporate IP range).
+- **Provider-agnostic pattern** - same SG layout appears in Kubernetes examples on AWS, Azure and GCP when separating public load balancers from worker nodes (Best practice |  
+  [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks);  
+  [AKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/aks);  
+  [GKE tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke)).
+
+#### Risks
+- **SSH exposure risk** - default `0.0.0.0/0` is acceptable in lab environment, but in production it must be restricted to single admin IP or VPN subnet (Risk | unrestricted SSH exposure).
+- **Open outbound traffic** - allowing all outbound egress is typical for web-tier instances, but some regulated environments require more restrictive outbound policies (Trade-off | open egress).
+- **Missing NAT or private-only subnets (yet)** - EC2 instances in public subnets may rely on public IP for package installation. More secure architecture would use private subnets + NAT Gateway - postponed for simplicity (Trade-off | simplified web-tier setup).
+
+#### Validation
+The configuration was validated using the standard Terraform local pipeline:
+- `terraform fmt` - formatting
+- `terraform validate` - syntax and consistency validation
+- `terraform plan` - verification of changes before apply
+It checks align with HashiCorp IaC workflows as recomended (Best practice | [Terraform Stacks blog](https://www.hashicorp.com/en/blog/terraform-stacks-explained)).
+
+<details> <summary>Validate Terraform</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_05_validate_terraform.jpg?raw=true" width="900" alt="validate_terraform"> </details>
+
+<details> <summary>Terraform plan result</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_06_terraform_plan_result.jpg?raw=true" width="900" alt="terraform_plan_result"> </details>
+
