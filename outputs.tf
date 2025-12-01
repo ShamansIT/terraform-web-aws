@@ -1,4 +1,14 @@
 # outputs.tf
 #
 # Terraform outputs
-# From start helps enforce consistent structure for IaC config.
+
+output "web_a_public_ip" {
+  description = "Public IP of web instance A"
+  value       = aws_instance.web_a.public_ip
+}
+
+output "web_b_public_ip" {
+  description = "Public IP of web instance B"
+  value       = aws_instance.web_b.public_ip
+}
+

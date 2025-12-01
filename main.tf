@@ -15,6 +15,28 @@ data "aws_availability_zones" "available" {
 
 
 # ***************************************************
+# AMI for web instances
+# ***************************************************
+
+# Use Amazon Linux 2 AMI in selected region.
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+
+  owners = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+
+# ***************************************************
 # VPC
 # ***************************************************
 
@@ -139,6 +161,7 @@ resource "aws_route_table_association" "public_b" {
   route_table_id = aws_route_table.public.id
 }
 
+
 # ***************************************************
 # Security Groups
 # ***************************************************
@@ -209,5 +232,44 @@ resource "aws_security_group" "web_sg" {
     Name        = "web-sg"
     Component   = "web"
     Environment = "lab"
+  }
+}
+
+
+# ***************************************************
+# EC2 Web Cluster - 2 instances across 2 AZs
+# ***************************************************
+
+resource "aws_instance" "web_a" {
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type          = "t3.micro"
+  subnet_id              = aws_subnet.public_a.id
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
+  user_data              = file("${path.module}/userdata-web.sh")
+
+  associate_public_ip_address = true
+
+  tags = {
+    Name        = "web-a"
+    Role        = "web"
+    Environment = "lab"
+    AZ          = data.aws_availability_zones.available.names[0]
+  }
+}
+
+resource "aws_instance" "web_b" {
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type          = "t3.micro"
+  subnet_id              = aws_subnet.public_b.id
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
+  user_data              = file("${path.module}/userdata-web.sh")
+
+  associate_public_ip_address = true
+
+  tags = {
+    Name        = "web-b"
+    Role        = "web"
+    Environment = "lab"
+    AZ          = data.aws_availability_zones.available.names[1]
   }
 }

@@ -173,5 +173,5 @@ It checks align with HashiCorp IaC workflows as recomended (Best practice | [Ter
 
 <details> <summary>Validate Terraform</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_05_validate_terraform.jpg?raw=true" width="900" alt="validate_terraform"> </details>
 
-<details> <summary>Terraform plan result</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/TTerraform(IAC)_06_terraform_plan_result.jpg?raw=true" width="900" alt="terraform_plan_result"> </details>
+<details> <summary>Terraform plan result</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_06_terraform_plan_result.jpg?raw=true" width="900" alt="terraform_plan_result"> </details>
 
