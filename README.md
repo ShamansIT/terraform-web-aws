@@ -175,3 +175,69 @@ It checks align with HashiCorp IaC workflows as recomended (Best practice | [Ter
 
 <details> <summary>Terraform plan result</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_06_terraform_plan_result.jpg?raw=true" width="900" alt="terraform_plan_result"> </details>
 
+### Compute Layer, EC2 Web Cluster (Stage 6)
+Stage adds the compute layer: small web cluster of two EC2 instances distributed across two Availability Zones.  
+Both instances are configured automatically on boot via a `user_data` script that installs and configures nginx, so each node becomes a self-contained web server without manual intervention.  
+This approach mirrors how worker nodes are provisioned for Kubernetes/EKS clusters, but is implemented here in a simplified form using EC2 instances (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).
+
+#### Implemented components
+- **AMI selection (`data "aws_ami" "amazon_linux"`)**  
+  - Uses a data source to fetch the latest Amazon Linux 2 AMI in the target region, instead of hardcoding a fixed AMI ID.  
+  - Filters by name pattern `amzn2-ami-hvm-*-x86_64-gp2` and virtualization type `hvm`, which follows typical recommendations for small web loads (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).
+
+- **Bootstrap script (`userdata-web.sh`)**  
+  - Updates system packages.  
+  - Installs and enables nginx.  
+  - Reads instance metadata (Instance ID, Availability Zone) through HTTP-endpoint `169.254.169.254`.  
+  - Generates a simple HTML page from:		
+    - Instance ID,
+    - Availability Zone,
+    - name and student ID.  
+  Each instance configures itself at startup and is immediately ready to process HTTP requests.
+
+- **Two EC2 instances (`aws_instance.web_a`, `aws_instance.web_b`)**  
+  - Both use Amazon Linux 2 AMI with data source.  
+  - `web_a` deployed in `public_a` subnet (First AZ), `web_b` - in `public_b` subnet (Other AZ).  
+  - Both apply the 'web_sg' Security Group with which it was implemented earlier.  
+  - `user_data` connected via `file("${path.module}/userdata-web.sh")`, which ensures the same setup process for each node.  
+  - Enabled 'associate_public_ip_address = true' for simplified testing over public IPs.
+
+#### Reasoning design choices
+- **High availability via two AZ**  
+  - Distribution of instances between the first two Availability Zones in the region follows the multi-AZ pattern described in the examples for EKS and multi-cluster solutions (Best practice | [AWS EKS multi-cluster blog](https://aws.amazon.com/blogs/networking-and-content-delivery/building-resilient-multi-cluster-applications-with-amazon-eks/)).  
+  - Losing one AZ does not cause the web layer to stop altogether - the second instance remains available.
+
+- **Automated setup via 'user_data'**  
+  - The structured and consistent configuration of nginx and HTML pages occurs automatically at the stage of launching the instance, without manual steps.  
+  - This approach simplifies the reproducibility of the environment: any new instance in this cluster automatically becomes a website with the same configuration (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).
+
+- **Displaying metadata on a page**  
+  - Displaying the Instance ID and Availability Zone directly to the HTML page makes it easy to debug and demonstrate: it's easy to see which instance the response came from.  
+  - It also shows the use of the metadata service as practical tool for diagnosing and personalising node's response.
+
+- **Alignment with Kubernetes/EKS-based clusters**  
+  - Although regular EC2 is used here, the structure is very close to the approach with worker nodes in EKS:  
+    - one type of AMI,  
+    - automatic configuration at the start,  
+    - distribution by A-Z (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).
+
+#### Risks
+- **Free Tier Cost and Limitations**  
+  - Two 't3.micro' or 't2.micro' instances can go beyond the free tier if they run continuously. For a training project, it is important to disable or destroy instances after the tests are completed (Risk | Unnecessary EC2 costs).
+- **Deploying to public subnets**  
+  - The current implementation deploys web instances on public subnets with public IPs to simplify testing.  
+  - In a more secure architecture, the web layer is hosted in private subnets behind the NAT Gateway and ALB (Trade-off | Simplified schema without NAT).
+- **Using 'user_data' as the main configuration engine**  
+  - `user_data' is good for initial bootstrapping, but as the complexity of configurations increases, they often move to tools like configuration managers or pre-built images (Trade-off | Limitations of imperative scripts).
+- **Lack of Auto Scaling Group**  
+  - Two static instances exhibit basic fault tolerance, but do not automatically scale when the load changes.  
+  - The next logical step is to transfer this logic to the Auto Scaling Group from the Launch Template, which follows the typical recommendations for production architectures (Potential improvement | transition to ASG).
+
+#### Validation
+Configuration was validated and tested as follows:
+- `terraform fmt`- checking and aligning configuration formatting.  
+- `terraform validate`- basic syntax and consistency check.  
+- `terraform plan`- analyse changes before deployment.  
+- `terraform apply`- creating both instances and checking nginx availability over public IPs, including displaying the Instance ID and Availability Zone on HTML page.
+
+<details> <summary>AWS instance check</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_07_aws_instance_check.jpg?raw=true" width="900" alt="aws_instance_check"> </details>
