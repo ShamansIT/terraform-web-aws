@@ -69,7 +69,7 @@ David Muñoz's article shows that even complex infrastructures can be supported 
 The concept of Terraform Stacks clearly demonstrates the need for a clear boundary between root configurations and modular components as infrastructure grows (Best practice | [Terraform Stacks blog](https://www.hashicorp.com/en/blog/terraform-stacks-explained)). Skeleton is already consistent with this logic.  
 
 **Repeatability and portability**  
-Conceptually preserved common Terraform-workflow patterns (init → format → validate → plan → apply), which coincides with the approach in multi-cloud Kubernetes projects (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); Best practice | [Terraform AKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/aks); Best practice | [Terraform GKE tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke)).  
+Conceptually preserved common Terraform-workflow patterns (init -> format -> validate -> plan -> apply), which coincides with the approach in multi-cloud Kubernetes projects (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); Best practice | [Terraform AKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/aks); Best practice | [Terraform GKE tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke)).  
 
 ### `terraform init`, `terraform fmt`, `terraform validate` are part of the routine
 Each local change is accompanied by:
@@ -149,7 +149,7 @@ Designed by follows AWS and Terraform security best practices for tiered archite
   - Egress: unrestricted outbound traffic for updates, AMI metadata and package installs.
   - Rationale: EC2 instances should not be exposed directly to the internet.  
     Traffic flow becomes:
-    **Client → ALB → EC2**, matching common AWS patterns for EKS/EC2 workloads (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).
+    **Client -> ALB -> EC2**, matching common AWS patterns for EKS/EC2 workloads (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).
 
 #### Reasoning structure choise
 - **Layered security** - ALB receives all public traffic, while web servers stay private. This minimizes the attack surface and follows the principle of least privilege.
@@ -241,3 +241,79 @@ Configuration was validated and tested as follows:
 - `terraform apply`- creating both instances and checking nginx availability over public IPs, including displaying the Instance ID and Availability Zone on HTML page.
 
 <details> <summary>AWS instance check</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_07_aws_instance_check.jpg?raw=true" width="900" alt="aws_instance_check"> </details>
+
+### Load Balancing Layer (Stage 7)
+This stage adds an internet-facing **Application Load Balancer (ALB)** that distributes HTTP traffic across the two EC2 web instances, each deployed in a different Availability Zone.  
+The goal is to move from direct instance access to a single, stable entry point and to mirror how load balancers are typically used in modern cloud architectures (LB -> nodes) in environments such as EKS, AKS and GKE (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); Best practice | [Terraform AKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/aks); Best practice | [Terraform GKE tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke)).
+
+#### Implemented components
+- **Application Load Balancer (`aws_lb.web_alb`)**
+  - Type: `application` (ALB), internet-facing (`internal = false`).
+  - Placed in two public subnets (`public_a`, `public_b`) across different Availability Zones.
+  - Uses the existing `alb_sg` Security Group, which allows HTTP (`80/tcp`) from the internet.
+  - This configuration aligns with the standard pattern of placing the load balancer in public subnets while keeping application nodes behind it (Best practice | [AWS EKS multi-cluster blog](https://aws.amazon.com/blogs/networking-and-content-delivery/building-resilient-multi-cluster-applications-with-amazon-eks/)).
+
+- **Target Group (`aws_lb_target_group.web_tg`)**
+  - Protocol: HTTP, port 80, attached to the same VPC as the web instances.
+  - Health checks configured on `/` using HTTP 200 as the expected result.
+  - Health check interval, timeout and thresholds are tuned for a small lab environment while still demonstrating how ALB monitors backend health and automatically removes unhealthy targets from rotation (Pattern | [AWS EKS Medium article](https://medium.com/@david.e.munoz/aws-elastic-kubernetes-service-eks-e5f4c00b3781)).
+
+- **Target Attachments (`aws_lb_target_group_attachment`)**
+  - Both EC2 web instances (`web_a`, `web_b`) are attached as targets on port 80.
+  - This turns the earlier “static” web cluster into proper backend pool for the load balancer and completes the LB -> nodes flow (Pattern | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).
+
+- **HTTP Listener (`aws_lb_listener.http`)**
+  - Listens on port 80 and forwards all HTTP traffic to `web_tg`.
+  - This configuration models prevalent scenario in Kubernetes-style setups where an external load balancer terminates incoming requests and routes them to worker nodes or services (Best practice | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); Best practice | [Terraform AKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/aks)).
+- **Output (`alb_dns_name`)**
+  - Exposes the ALB DNS name as a Terraform output so it can be used directly in testing, documentation and potential monitoring configuration.
+
+#### Reasoning design choices
+- **Single public entry point instead of direct EC2 access**  
+  The ALB becomes the **only** public endpoint. End users never connect to EC2 instances directly; instead, they call `http://<alb_dns_name>`.  
+  This allows:
+  - decoupling client traffic from individual instance lifecycles;
+  - seamless replacement or scaling of instances without changing the public URL;
+  - centralised health checking and routing logic.
+
+- **Cross-AZ load distribution**  
+  Because the ALB is attached to public subnets in two Availability Zones and the target group includes instances in both AZs, traffic is distributed across zones.  
+  This is consistent with high-availability guidelines described in AWS multi-cluster and multi-AZ examples (Best practice | [AWS EKS multi-cluster blog](https://aws.amazon.com/blogs/networking-and-content-delivery/building-resilient-multi-cluster-applications-with-amazon-eks/)).  
+
+- **Health checks on `/`**  
+  Using `/` as the health check path is sufficient for a simple nginx-based demo where the main page is served from the default root.  
+More complex systems often use a separate '/health' endpoint with additional application checks, but for this project, a basic check gives enough signal that the node is running.
+
+- **Alignment with EKS/AKS/GKE load balancing concepts**  
+Even though the backend here is EC2 rather than containers, the architecture closely resembles Kubernetes setup: external load balancer -> target group (or service) -> nodes/pods.  
+This makes it easier to extend the current design towards container-based orchestration in the future (Pattern | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); Pattern | [Terraform GKE tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke)).
+
+#### Risks
+- **No TLS termination (HTTP only)**  
+The current ALB listener operates on plain HTTP.  
+For production environment, HTTPS with proper TLS certificates (ACM) would be mandatory. Here, HTTP is used to keep the lab configuration simple (Trade-off | simplified transport security).
+
+- **Health check path and depth**  
+Health checks on `/` only verify that nginx returns HTTP 200, but do not test application-level logic.  
+In more advanced scenario, separate health endpoints and deeper checks should be used (Risk | limited health visibility).
+
+- **Cost considerations**  
+An ALB has an hourly cost and charges per LCU usage. While acceptable for a short-lived lab, it is important to tear down resources after testing to avoid unnecessary charges (Risk | additional ALB cost).
+
+- **Static backend set**  
+Target group currently attaches two fixed instances.  
+Natural extension is to replace direct attachments with an Auto Scaling Group and a Launch Template, so the load balancer can work with dynamically scaled capacity (Potential improvement: move to ASG).
+
+#### Validation
+Configuration was validated and tested using:
+- `terraform fmt` - formatting of configuration files.
+- `terraform validate` - basic syntax and consistency checks.
+- `terraform plan` - dry-run to preview ALB/target group changes.
+- `terraform apply` - deployment of ALB and its integration with the web cluster.
+- Manual tests:
+  - Opening `http://<alb_dns_name>` in a browser to confirm page availability.
+  - Refreshing the page multiple times and observing responses from different Availability Zones, confirming that the ALB balances traffic across both web instances.
+
+<details> <summary>Check ALB</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_08_check_ALB.jpg?raw=true" width="900" alt="check ALB"> </details>
+
+<details> <summary>Check ALB http</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_09_check_ALB_http.jpg?raw=true" width="900" alt="check ALB http"> </details>
