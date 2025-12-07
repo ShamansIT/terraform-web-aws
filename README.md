@@ -66,16 +66,16 @@ terraform-web-aws/
 Initial research focused on understanding common IaC and networking patterns from official Terraform Kubernetes tutorials (Research | [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks); [AKS](https://developer.hashicorp.com/terraform/tutorials/kubernetes/aks); [GKE](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke)) and resilient multi-cluster architectures (Research | [AWS EKS multi-cluster explained](https://aws.amazon.com/blogs/networking-and-content-delivery/building-resilient-multi-cluster-applications-with-amazon-eks/)).  
 Based on this, the project scope was defined as a simplified HA web stack on EC2 across two Availability Zones, with an ALB in front.
 
-<details> <summary>AWS Configure</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_01_aws_configure.jpg?raw=true" width="900" alt="aws_configure"> </details>
+<details> <summary>AWS Configure</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_01_aws_configure.jpg?raw=true" width="900" alt="aws_configure"> </details>
 
 
 ## GitHub Repo & Workflow (Stage 2)
 Public GitHub repository `terraform-web-aws` created with `main` as the stable branch and dedicated `feature/*` branches for each phase (project init, networking, security+EC2, ALB, modules+CI).  
 A Git-based workflow with structured Pull Requests (Summary, Changes, Rationale, Testing) was adopted to mirror real-world Terraform/Kubernetes projects and to make the evolution of the infrastructure transparent (Process | [AWS EKS Medium article](https://medium.com/@david.e.munoz/aws-elastic-kubernetes-service-eks-e5f4c00b3781); [Terraform EKS tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks)).
 
-<details> <summary>Init Terraform</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_02_init_terraform.jpg?raw=true" width="900" alt="init_terraform"> </details>
+<details> <summary>Init Terraform</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_02_init_terraform.jpg?raw=true" width="900" alt="init_terraform"> </details>
 
-<details> <summary>Validate Terraform</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_03_validate_terraform.jpg?raw=true" width="900" alt="validate_terraform"> </details>
+<details> <summary>Validate Terraform</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_03_validate_terraform.jpg?raw=true" width="900" alt="validate_terraform"> </details>
 
 ## Terraform project skeleton (Stage 3)
 In the initial stage - Terraform skeleton, the focus is on building a **clean, extensible IaC structure** that can be safely developed in subsequent phases.
@@ -170,7 +170,7 @@ The networking design follows typical AWS and Terraform best practices:
 - Public and private subnets are spread across two Availability Zones to support high availability.
 - The route table uses a correct default route (`0.0.0.0/0`) instead of the weak `0.0.0.0/24` example from the brief, which would only route a tiny fraction of the IPv4 space.
 
-<details> <summary>Terraform plan</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_04_terraform_plan.jpg?raw=true" width="900" alt="terraform_plan"> </details>
+<details> <summary>Terraform plan</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_04_terraform_plan.jpg?raw=true" width="900" alt="terraform_plan"> </details>
 
 
 ### Security Layer, Security Groups (Stage 5) 
@@ -214,9 +214,9 @@ The configuration was validated using the standard Terraform local pipeline:
 - `terraform plan` - verification of changes before apply
 It checks align with HashiCorp IaC workflows as recomended (Best practice | [Terraform Stacks explained](https://www.hashicorp.com/en/blog/terraform-stacks-explained)).
 
-<details> <summary>Validate Terraform</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_05_validate_terraform.jpg?raw=true" width="900" alt="validate_terraform"> </details>
+<details> <summary>Validate Terraform</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_05_validate_terraform.jpg?raw=true" width="900" alt="validate_terraform"> </details>
 
-<details> <summary>Terraform plan result</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_06_terraform_plan_result.jpg?raw=true" width="900" alt="terraform_plan_result"> </details>
+<details> <summary>Terraform plan result</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_06_terraform_plan_result.jpg?raw=true" width="900" alt="terraform_plan_result"> </details>
 
 ### Compute Layer, EC2 Web Cluster (Stage 6)
 Stage adds the compute layer: small web cluster of two EC2 instances distributed across two Availability Zones.  
@@ -283,7 +283,7 @@ Configuration was validated and tested as follows:
 - `terraform plan`- analyse changes before deployment.  
 - `terraform apply`- creating both instances and checking nginx availability over public IPs, including displaying the Instance ID and Availability Zone on HTML page.
 
-<details> <summary>AWS instance check</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_07_aws_instance_check.jpg?raw=true" width="900" alt="aws_instance_check"> </details>
+<details> <summary>AWS instance check</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_07_aws_instance_check.jpg?raw=true" width="900" alt="aws_instance_check"> </details>
 
 ### Load Balancing Layer (Stage 7)
 This stage adds an internet-facing **Application Load Balancer (ALB)** that distributes HTTP traffic across the two EC2 web instances, each deployed in a different Availability Zone.  
@@ -357,9 +357,9 @@ Configuration was validated and tested using:
   - Opening `http://<alb_dns_name>` in a browser to confirm page availability.
   - Refreshing the page multiple times and observing responses from different Availability Zones, confirming that the ALB balances traffic across both web instances.
 
-<details> <summary>Check ALB</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_08_check_ALB.jpg?raw=true" width="900" alt="check ALB"> </details>
+<details> <summary>Check ALB</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_08_check_ALB.jpg?raw=true" width="900" alt="check ALB"> </details>
 
-<details> <summary>Check ALB http</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/images/Terraform(IAC)_09_check_ALB_http.jpg?raw=true" width="900" alt="check ALB http"> </details>
+<details> <summary>Check ALB http</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_09_check_ALB_http.jpg?raw=true" width="900" alt="check ALB http"> </details>
 
 ### Modular Architecture & CI Integration (Stage 8)
 
@@ -396,6 +396,9 @@ Stage refactors the existing Terraform configuration into fully isolated modules
   - Subsequent `terraform plan` showed **No changes**, confirming architectural equivalence  
     (Best practice | [Terraform refactoring guide](https://developer.hashicorp.com/terraform/language/modules/develop/refactoring)).
 
+<details> <summary>Terraform rebuid</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_10_terraform_rebuild.jpg?raw=true" width="900" alt="Terraform rebuid"> </details>
+    
+
 #### Reasoning design choices
 - **Separation of concerns** - networking, compute and load balancing fully isolated, mirroring real-world IaC structures in Kubernetes/EKS templates.  
 - **Predictability and CI readiness** - more precise module boundaries enable GitHub Actions validation and easier future testing.  
@@ -417,4 +420,62 @@ Stage refactors the existing Terraform configuration into fully isolated modules
 - `terraform apply` - successful deployment of fully modular architecture  
 - confirmed that ALB, EC2 cluster and VPC generated an identical final architecture with a cleaner internal structure
 
+<details> <summary>Instances</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_11_instances.jpg?raw=true" width="900" alt="Instances"> </details>
 
+<details> <summary>HTTP check</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_12_terraform_http_check.jpg?raw=true" width="900" alt="HTTP check"> </details>
+
+
+## Conclusion
+
+
+
+
+## References
+
+1. AWS (2023) *AWS Tagging Best Practices*.  
+   Available at: https://docs.aws.amazon.com/whitepapers/latest/tagging-best-practices/tagging-best-practices.html  
+   (Accessed: 21 November 2025).
+
+2. AWS (2023) *Building resilient multi-cluster applications with Amazon EKS*.  
+   Available at: https://aws.amazon.com/blogs/networking-and-content-delivery/building-resilient-multi-cluster-applications-with-amazon-eks/  
+   (Accessed: 05 November 2025).
+
+3. HashiCorp (2022) *Terraform Stacks Explained*.  
+   Available at: https://www.hashicorp.com/blog/terraform-stacks-explained  
+   (Accessed: 03 November 2025).
+
+4. HashiCorp (2023) *Developing Terraform Modules: Module Structure and Best Practices*.  
+   Available at: https://developer.hashicorp.com/terraform/language/modules/develop  
+   (Accessed: 18 November 2025).
+
+5. HashiCorp (2023) *Terraform CLI - Plan Workflow*.  
+   Available at: https://developer.hashicorp.com/terraform/cli/run/plan  
+   (Accessed: 26 November 2025).
+
+6. HashiCorp (2023) *Terraform Language: Locals*.  
+   Available at: https://developer.hashicorp.com/terraform/language/values/locals  
+   (Accessed: 24 November 2025).
+
+7. HashiCorp (2023) *Terraform Module Refactoring Guide*.  
+   Available at: https://developer.hashicorp.com/terraform/language/modules/develop/refactoring  
+   (Accessed: 29 November 2025).
+
+8. HashiCorp (2023) *Terraform Tutorial: Amazon EKS (Kubernetes on AWS)*.  
+   Available at: https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks  
+   (Accessed: 06 November 2025).
+
+9. HashiCorp (2023) *Terraform Tutorial: Azure AKS (Kubernetes on Azure)*.  
+   Available at: https://developer.hashicorp.com/terraform/tutorials/kubernetes/aks  
+   (Accessed: 08 November 2025).
+
+10. HashiCorp (2023) *Terraform Tutorial: Google GKE (Kubernetes on Google Cloud)*.  
+    Available at: https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke  
+    (Accessed: 09 November 2025).
+
+11. Muñoz, D. (2022) *AWS Elastic Kubernetes Service (EKS) - Architecture and Deployment Patterns*.  
+    Medium. Available at: https://medium.com/@david.e.munoz/aws-elastic-kubernetes-service-eks-e5f4c00b3781  
+    (Accessed: 02 December 2025).
+
+12. Terraform AWS Modules Community (2023) *terraform-aws-alb module*.  
+    Available at: https://registry.terraform.io/modules/terraform-aws-modules/alb/aws/latest  
+    (Accessed: 06 December 2025).
