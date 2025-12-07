@@ -398,7 +398,6 @@ Stage refactors the existing Terraform configuration into fully isolated modules
 
 <details> <summary>Terraform rebuid</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_10_terraform_rebuild.jpg?raw=true" width="900" alt="Terraform rebuid"> </details>
     
-
 #### Reasoning design choices
 - **Separation of concerns** - networking, compute and load balancing fully isolated, mirroring real-world IaC structures in Kubernetes/EKS templates.  
 - **Predictability and CI readiness** - more precise module boundaries enable GitHub Actions validation and easier future testing.  
@@ -424,10 +423,29 @@ Stage refactors the existing Terraform configuration into fully isolated modules
 
 <details> <summary>HTTP check</summary> <img src="https://github.com/ShamansIT/terraform-web-aws/blob/main/images/Terraform(IAC)_12_terraform_http_check.jpg?raw=true" width="900" alt="HTTP check"> </details>
 
-
 ## Conclusion
+Project initial workflow **Terraform skeleton** was consistently deployed to a **full-fledged, documented, modular, and high-availability web infrastructure on AWS**. From a minimal set of files (*providers.tf*, *variables.tf*, *main.tf*, *outputs.tf*) and a **Git-oriented workflow**, each subsequent stage added a production-like layer:  
+- **VPC and subnets**  
+- **Security Groups**  
+- **EC2 web-cluster**  
+- **Application Load Balancer (ALB)**  
+- **Refactoring into reusable Terraform modules** with basic CI integration  
+The result is a **holistic Infrastructure as Code case** that delivers a real improvement in the cloud solution, moving from scratch to a more mature, efficient architecture informed by experience and best practices.
+---
 
+The goal of the project is to **design and implement a high-availability architecture with a clear separation of responsibilities**.  
+- The **network layer** is built around a separate VPC with public and private subnets in several Availability Zones.  
+- The **security layer** uses a layered model with separate Security Groups for ALB and EC2, where ALB is the **only public entry point**.  
+- The **compute layer** relies on automatic bootstrap via *user_data*, so that each instance independently configures nginx and content.  
+- The **load balancing layer** centralises traffic distribution, health checks, and cross-AZ balancing.  
+Each of these solutions is associated with **well-known AWS and HashiCorp best practices**.
+---
 
+The project also demonstrates **practical DevOps discipline**. The entire evolution of the infrastructure is carried out through a **GitHub repository** with `main` as the stable branch and `feature/*` branches for individual stages, using **Pull Requests**and descriptions such as *Summary / Changes / Rationale / Testing*.  
+At each stage, a standard **Terraform loop** is applied:  
+`terraform fmt`, `terraform validate`, `terraform plan`, `terraform apply`.
+
+At the final stage, the configuration is refactored into dedicated modules (`vpc`, `web`, `alb`), while the **root-module becomes a composition layer**. This makes the codebase much easier to scale (adding NAT Gateway, Auto Scaling Group, HTTPS/TLS, remote backend) and **prepared for CI/CD** via GitHub Actions or other pipelines.
 
 
 ## References
