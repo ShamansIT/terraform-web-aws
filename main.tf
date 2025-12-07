@@ -5,20 +5,25 @@
 
 
 # ***************************************************
-# Data sources
+# Locals: common tags
 # ***************************************************
 
-# Get list Availability Zones in chosen region
-data "aws_availability_zones" "available" {
-  state = "available"
-}
+locals {
+  environment = "lab"
+  project     = "terraform-web-aws"
+  owner       = "Serhii"
 
+  common_tags = {
+    Environment = local.environment
+    Project     = local.project
+    Owner       = local.owner
+  }
+}
 
 # ***************************************************
 # AMI for web instances
 # ***************************************************
 
-# Use Amazon Linux 2 AMI in selected region.
 data "aws_ami" "amazon_linux" {
   most_recent = true
 
@@ -35,144 +40,31 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-
 # ***************************************************
-# VPC
+# VPC + networking (module)
 # ***************************************************
 
-resource "aws_vpc" "main" {
+module "vpc" {
+  source = "./modules/vpc"
+
   cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
-  enable_dns_support   = true
+  public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+  private_subnet_cidrs = ["10.0.10.0/24", "10.0.20.0/24"]
 
-  tags = {
-    Name        = "terraform-web-vpc"
-    Project     = "terraform-web-aws"
-    Environment = "lab"
-  }
+  tags = local.common_tags
 }
 
-
 # ***************************************************
-# Public subnets (for ALB and potential publicfacing resources)
-# ***************************************************
-
-resource "aws_subnet" "public_a" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[0]
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name        = "public-a"
-    Tier        = "public"
-    Environment = "lab"
-  }
-}
-
-resource "aws_subnet" "public_b" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.2.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[1]
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name        = "public-b"
-    Tier        = "public"
-    Environment = "lab"
-  }
-}
-
-
-# ***************************************************
-# Private subnets (reserved for non-public workloads)
+# Security Groups (shared security layer)
 # ***************************************************
 
-resource "aws_subnet" "private_a" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.10.0/24"
-  availability_zone = data.aws_availability_zones.available.names[0]
-
-  tags = {
-    Name        = "private-a"
-    Tier        = "private"
-    Environment = "lab"
-  }
-}
-
-resource "aws_subnet" "private_b" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.20.0/24"
-  availability_zone = data.aws_availability_zones.available.names[1]
-
-  tags = {
-    Name        = "private-b"
-    Tier        = "private"
-    Environment = "lab"
-  }
-}
-
-
-# ***************************************************
-# Internet Gateway
-# ***************************************************
-
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name        = "terraform-web-igw"
-    Environment = "lab"
-  }
-}
-
-
-# ***************************************************
-# Public route table
-# ***************************************************
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  # Correct default route
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-  }
-
-  tags = {
-    Name        = "public-rt"
-    Environment = "lab"
-  }
-}
-
-
-# ***************************************************
-# Route table associations for public subnets
-# ***************************************************
-
-resource "aws_route_table_association" "public_a" {
-  subnet_id      = aws_subnet.public_a.id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_route_table_association" "public_b" {
-  subnet_id      = aws_subnet.public_b.id
-  route_table_id = aws_route_table.public.id
-}
-
-
-# ***************************************************
-# Security Groups
-# ***************************************************
-
-# Security Group for App Load Balancer
+# ALB Security Group
 resource "aws_security_group" "alb_sg" {
   name        = "alb-sg"
-  description = "Allow HTTP from internet to ALB"
-  vpc_id      = aws_vpc.main.id
+  description = "Allow HTTP from the internet to the ALB"
+  vpc_id      = module.vpc.vpc_id
 
-  # Ingress: allow HTTP from anywhere
+  # HTTP from anywhere to ALB on port 80
   ingress {
     description = "HTTP from anywhere"
     from_port   = 80
@@ -181,7 +73,7 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Egress: allow all outbound traffic
+  # Allow all egress so ALB can reach targets and perform health checks
   egress {
     from_port   = 0
     to_port     = 0
@@ -189,20 +81,22 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name        = "alb-sg"
-    Component   = "load-balancer"
-    Environment = "lab"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name      = "alb-sg"
+      Component = "load-balancer"
+    }
+  )
 }
 
-# Security Group for web EC2 instances
+# Web Security Group
 resource "aws_security_group" "web_sg" {
   name        = "web-sg"
   description = "Allow HTTP from ALB and optional SSH from a trusted IP"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = module.vpc.vpc_id
 
-  # Ingress: allow HTTP from ALB security group only
+  # HTTP only from ALB SG - web nodes are not public on port 80
   ingress {
     description     = "HTTP from ALB only"
     from_port       = 80
@@ -211,7 +105,7 @@ resource "aws_security_group" "web_sg" {
     security_groups = [aws_security_group.alb_sg.id]
   }
 
-  # Ingress: allow SSH from trusted IP only
+  # SSH from trusted IP for management
   ingress {
     description = "SSH from trusted IP"
     from_port   = 22
@@ -220,7 +114,7 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = [var.my_ip_cidr]
   }
 
-  # Egress: allow all outbound traffic
+  # Outbound allowed for updates, package installs, etc.
   egress {
     from_port   = 0
     to_port     = 0
@@ -228,131 +122,44 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name        = "web-sg"
-    Component   = "web"
-    Environment = "lab"
-  }
-}
-
-
-# ***************************************************
-# EC2 Web Cluster - 2 instances across 2 AZs
-# ***************************************************
-
-resource "aws_instance" "web_a" {
-  ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.public_a.id
-  vpc_security_group_ids = [aws_security_group.web_sg.id]
-  user_data              = file("${path.module}/userdata-web.sh")
-
-  associate_public_ip_address = true
-
-  tags = {
-    Name        = "web-a"
-    Role        = "web"
-    Environment = "lab"
-    AZ          = data.aws_availability_zones.available.names[0]
-  }
-}
-
-resource "aws_instance" "web_b" {
-  ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.public_b.id
-  vpc_security_group_ids = [aws_security_group.web_sg.id]
-  user_data              = file("${path.module}/userdata-web.sh")
-
-  associate_public_ip_address = true
-
-  tags = {
-    Name        = "web-b"
-    Role        = "web"
-    Environment = "lab"
-    AZ          = data.aws_availability_zones.available.names[1]
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name      = "web-sg"
+      Component = "web"
+    }
+  )
 }
 
 # ***************************************************
-# Application Load Balancer
+# Web EC2 cluster (module)
 # ***************************************************
 
-resource "aws_lb" "web_alb" {
-  name               = "web-alb"
-  load_balancer_type = "application"
-  internal           = false
+module "web" {
+  source = "./modules/web"
 
-  # Public subnets for ALB
-  subnets = [
-    aws_subnet.public_a.id,
-    aws_subnet.public_b.id
-  ]
+  subnet_ids         = module.vpc.public_subnet_ids
+  security_group_ids = [aws_security_group.web_sg.id]
+  ami_id             = data.aws_ami.amazon_linux.id
+  instance_type      = "t3.micro"
+  user_data          = file("${path.module}/userdata-web.sh")
 
-  security_groups = [aws_security_group.alb_sg.id]
-
-  tags = {
-    Name        = "web-alb"
-    Component   = "load-balancer"
-    Environment = "lab"
-  }
+  tags = local.common_tags
 }
 
 # ***************************************************
-# Target Group for web instances
+# Application Load Balancer (module)
 # ***************************************************
 
-resource "aws_lb_target_group" "web_tg" {
-  name     = "web-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+module "alb" {
+  source = "./modules/alb"
 
-  health_check {
-    enabled             = true
-    protocol            = "HTTP"
-    path                = "/"
-    matcher             = "200"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-  }
+  vpc_id             = module.vpc.vpc_id
+  subnet_ids         = module.vpc.public_subnet_ids
+  security_group_ids = [aws_security_group.alb_sg.id]
 
-  tags = {
-    Name        = "web-tg"
-    Component   = "web"
-    Environment = "lab"
-  }
-}
+  target_instance_ids = module.web.instance_ids
+  target_port         = 80
 
-# ***************************************************
-# Attach web instances to Target Group
-# ***************************************************
-
-resource "aws_lb_target_group_attachment" "web_a_attachment" {
-  target_group_arn = aws_lb_target_group.web_tg.arn
-  target_id        = aws_instance.web_a.id
-  port             = 80
-}
-
-resource "aws_lb_target_group_attachment" "web_b_attachment" {
-  target_group_arn = aws_lb_target_group.web_tg.arn
-  target_id        = aws_instance.web_b.id
-  port             = 80
-}
-
-# ***************************************************
-# ALB Listener (HTTP :80)
-# ***************************************************
-
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.web_alb.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.web_tg.arn
-  }
+  tags = local.common_tags
 }
